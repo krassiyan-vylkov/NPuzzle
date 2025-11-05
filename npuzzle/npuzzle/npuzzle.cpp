@@ -3,24 +3,23 @@
 #include <cmath>
 #include <string>
 #include <climits>
-#include <stack>
+#include <deque>
 
 const int FOUND = -1;
 
 class BoardState{
 public:
     std::vector<int> board;
-    BoardState* parent;
     std::string lastMove;
-    int numberOfColumns;
+    int boardSideSize;
     int currSteps;
     int blankCoordinates;
     int blankGoal;
     int manhattanDist;
 
-    BoardState(const std::vector<int>& board, BoardState* parent,int numberOfColumns, std::string lastMove,
+    BoardState(const std::vector<int>& board, int boardSideSize, std::string& lastMove,
         int currSteps, int blankCoordinates,int blankGoal, int manhattanDist):
-        board(board), numberOfColumns(numberOfColumns), parent(parent), lastMove(lastMove),
+        board(board), boardSideSize(boardSideSize),  lastMove(lastMove),
         currSteps(currSteps), blankCoordinates(blankCoordinates), blankGoal(blankGoal), manhattanDist(manhattanDist)
     {
         
@@ -82,32 +81,150 @@ bool isSolvable(std::vector<int>& board, int numberOfColumns,int blankPosition) 
     }
 }
 
-int searchSolution(BoardState currentState, int threshold, std::stack<std::string>& solutionPath) {
+int searchSolution(BoardState& currentState, int threshold, std::deque<std::string>& solutionPath) {
     if (currentState.isSolution()) {
-        BoardState* currentStatePointer = &currentState;
-        while (currentStatePointer->parent != nullptr) {
-            solutionPath.push(currentStatePointer->lastMove);
-            currentStatePointer = currentStatePointer->parent;
-        }
+        std::cout << currentState.currSteps << std::endl;
         return FOUND;
     }
-    if (currentState.manhattanDist + currentState.currSteps > threshold) {
+    if ((currentState.manhattanDist + currentState.currSteps) > threshold) {
         return currentState.manhattanDist + currentState.currSteps;
     }
 
     int minHigherThanThreshold = INT_MAX;
 
+    if (currentState.lastMove != "left" && currentState.blankCoordinates % currentState.boardSideSize != 0) {
+        std::vector<int> successorBoard = currentState.board;
+        const int successorBlankCoordinates = currentState.blankCoordinates - 1;
+        std::swap(successorBoard[currentState.blankCoordinates],successorBoard[successorBlankCoordinates]);
+        std::string nextMove = "right";
+        int successorManhattanAdjustment;
+        int movedTileNewColumn = currentState.blankCoordinates % currentState.boardSideSize;
+        int movedTileOldColumn = (successorBlankCoordinates) % currentState.boardSideSize;
+        int correctTileColumn;
+        if (successorBoard[currentState.blankCoordinates] > currentState.blankGoal) {
+            correctTileColumn = successorBoard[currentState.blankCoordinates] % currentState.boardSideSize;
+        }
+        else {
+            correctTileColumn = (successorBoard[currentState.blankCoordinates] - 1) % currentState.boardSideSize;
+        }
+        successorManhattanAdjustment = abs(movedTileNewColumn - correctTileColumn) - abs(movedTileOldColumn - correctTileColumn);
+
+        BoardState successorBoardState(successorBoard, currentState.boardSideSize, nextMove, currentState.currSteps + 1,
+            successorBlankCoordinates, currentState.blankGoal, currentState.manhattanDist + successorManhattanAdjustment);
+
+        solutionPath.push_back(nextMove);
+        int potentialNewThreshold = searchSolution(successorBoardState, threshold, solutionPath);
+        if (potentialNewThreshold == FOUND) {
+            return FOUND;
+        }
+        if (potentialNewThreshold < minHigherThanThreshold) {
+            minHigherThanThreshold = potentialNewThreshold;
+        }
+        solutionPath.pop_back();
+    }
+
+    if (currentState.lastMove != "right" && currentState.blankCoordinates % currentState.boardSideSize + 1 != currentState.boardSideSize) {
+        std::vector<int> successorBoard = currentState.board;
+        const int successorBlankCoordinates = currentState.blankCoordinates + 1;
+        std::swap(successorBoard[currentState.blankCoordinates], successorBoard[successorBlankCoordinates]);
+        std::string nextMove = "left";
+        int successorManhattanAdjustment;
+        int movedTileNewColumn = currentState.blankCoordinates % currentState.boardSideSize;
+        int movedTileOldColumn = (successorBlankCoordinates) % currentState.boardSideSize;
+        int correctTileColumn;
+        if (successorBoard[currentState.blankCoordinates] > currentState.blankGoal) {
+            correctTileColumn = successorBoard[currentState.blankCoordinates] % currentState.boardSideSize;
+        }
+        else {
+            correctTileColumn = (successorBoard[currentState.blankCoordinates] - 1) % currentState.boardSideSize;
+        }
+        successorManhattanAdjustment = abs(movedTileNewColumn - correctTileColumn) - abs(movedTileOldColumn - correctTileColumn);
+
+        BoardState successorBoardState(successorBoard, currentState.boardSideSize, nextMove, currentState.currSteps + 1,
+            successorBlankCoordinates, currentState.blankGoal, currentState.manhattanDist + successorManhattanAdjustment);
+
+        solutionPath.push_back(nextMove);
+        int potentialNewThreshold = searchSolution(successorBoardState, threshold, solutionPath);
+        if (potentialNewThreshold == FOUND) {
+            return FOUND;
+        }
+        if (potentialNewThreshold < minHigherThanThreshold) {
+            minHigherThanThreshold = potentialNewThreshold;
+        }
+        solutionPath.pop_back();
+    }
+
+    if (currentState.lastMove != "up" && currentState.blankCoordinates / currentState.boardSideSize != 0) {
+        std::vector<int> successorBoard = currentState.board;
+        const int successorBlankCoordinates = currentState.blankCoordinates - currentState.boardSideSize;
+        std::swap(successorBoard[currentState.blankCoordinates], successorBoard[successorBlankCoordinates]);
+        std::string nextMove = "down";
+        int successorManhattanAdjustment;
+        int movedTileNewRow = currentState.blankCoordinates / currentState.boardSideSize;
+        int movedTileOldRow = (successorBlankCoordinates) / currentState.boardSideSize;
+        int correctTileRow;
+        if (successorBoard[currentState.blankCoordinates] > currentState.blankGoal) {
+            correctTileRow = successorBoard[currentState.blankCoordinates] / currentState.boardSideSize;
+        }
+        else {
+            correctTileRow = (successorBoard[currentState.blankCoordinates] - 1) / currentState.boardSideSize;
+        }
+        successorManhattanAdjustment = abs(movedTileNewRow - correctTileRow) - abs(movedTileOldRow - correctTileRow);
+
+        BoardState successorBoardState(successorBoard, currentState.boardSideSize, nextMove, currentState.currSteps + 1,
+            successorBlankCoordinates, currentState.blankGoal, currentState.manhattanDist + successorManhattanAdjustment);
+
+        solutionPath.push_back(nextMove);
+        int potentialNewThreshold = searchSolution(successorBoardState, threshold, solutionPath);
+        if (potentialNewThreshold == FOUND) {
+            return FOUND;
+        }
+        if (potentialNewThreshold < minHigherThanThreshold) {
+            minHigherThanThreshold = potentialNewThreshold;
+        }
+        solutionPath.pop_back();
+    }
+
+    if (currentState.lastMove != "down" && (currentState.blankCoordinates / currentState.boardSideSize) + 1 != currentState.boardSideSize) {
+        std::vector<int> successorBoard = currentState.board;
+        const int successorBlankCoordinates = currentState.blankCoordinates + currentState.boardSideSize;
+        std::swap(successorBoard[currentState.blankCoordinates], successorBoard[successorBlankCoordinates]);
+        std::string nextMove = "up";
+        int successorManhattanAdjustment;
+        int movedTileNewRow = currentState.blankCoordinates / currentState.boardSideSize;
+        int movedTileOldRow = successorBlankCoordinates / currentState.boardSideSize;
+        int correctTileRow;
+        if (successorBoard[currentState.blankCoordinates] > currentState.blankGoal) {
+            correctTileRow = successorBoard[currentState.blankCoordinates] / currentState.boardSideSize;
+        }
+        else {
+            correctTileRow = (successorBoard[currentState.blankCoordinates] - 1) / currentState.boardSideSize;
+        }
+        successorManhattanAdjustment = abs(movedTileNewRow - correctTileRow) - abs(movedTileOldRow - correctTileRow);
+
+        BoardState successorBoardState(successorBoard, currentState.boardSideSize, nextMove, currentState.currSteps + 1,
+            successorBlankCoordinates, currentState.blankGoal, currentState.manhattanDist + successorManhattanAdjustment);
+
+        solutionPath.push_back(nextMove);
+        int potentialNewThreshold = searchSolution(successorBoardState, threshold, solutionPath);
+        if (potentialNewThreshold == FOUND) {
+            return FOUND;
+        }
+        if (potentialNewThreshold < minHigherThanThreshold) {
+            minHigherThanThreshold = potentialNewThreshold;
+        }
+        solutionPath.pop_back();
+    }
 
     return minHigherThanThreshold;
 
 }
 
-void solve(BoardState startingBoardState) {
+void solve(BoardState& startingBoardState, std::deque<std::string>& reversedMovesToSolution) {
     int threshold = startingBoardState.manhattanDist;
-    std::stack<std::string> solutionPath;
     
     while (true) {
-        int newThreshold = searchSolution(startingBoardState, threshold, solutionPath);
+        int newThreshold = searchSolution(startingBoardState, threshold, reversedMovesToSolution);
         if (newThreshold == FOUND) {
             break;
         }
@@ -133,8 +250,22 @@ int main()
     }
 
     int manhattanDistanceStart = calculateManhattanDist(startingBoard, numOfColumns, blankGoalPosition);
+    std::string startingMove = "";
 
-    BoardState startingBoardState(startingBoard, nullptr, numOfColumns, "", 0, blankStartPosition, blankGoalPosition, manhattanDistanceStart);
+    BoardState startingBoardState(startingBoard, numOfColumns, startingMove, 0, blankStartPosition, blankGoalPosition, manhattanDistanceStart);
+    std::deque<std::string> reversedMovesToSolution;
+
+    if (isSolvable(startingBoard, numOfColumns, blankStartPosition)) {
+        solve(startingBoardState, reversedMovesToSolution);
+
+        while (!reversedMovesToSolution.empty()) {
+            std::cout << reversedMovesToSolution.front() << std::endl;
+            reversedMovesToSolution.pop_front();
+        }
+    }
+    else {
+        std::cout << -1;
+    }
     
     return 0;
 }
