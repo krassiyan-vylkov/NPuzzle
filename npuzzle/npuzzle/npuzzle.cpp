@@ -2,6 +2,10 @@
 #include <vector>
 #include <cmath>
 #include <string>
+#include <climits>
+#include <stack>
+
+const int FOUND = -1;
 
 class BoardState{
 public:
@@ -23,27 +27,16 @@ public:
     }
 
     bool isSolution() {
-        if (board[blankGoal] != 0) {
-            return false;
-        }
-        for (int i = 0; i < blankGoal; i++) {
-            if (board[i] != i + 1) {
-                return false;
-            }
-        }
-        for (int i = blankGoal + 1; i < board.size(); i++) {
-            if (board[i] != i) {
-                return false;
-            }
-        }
-        return true;
+        return manhattanDist == 0;
     }
 };
 
 int calculateManhattanDist(std::vector<int>& board, int numberOfColumns, int blankGoal) {
     int distance = 0;
     for (int i = 0; i < blankGoal; i++){
-        if(board[i] == 0) continue;
+        if (board[i] == 0) {
+            continue;
+        }
         distance = distance + abs((board[i] - 1) / numberOfColumns - i / numberOfColumns) +
         abs((board[i] - 1) % numberOfColumns - i %numberOfColumns);
     }
@@ -58,7 +51,9 @@ int calculateManhattanDist(std::vector<int>& board, int numberOfColumns, int bla
         }
     }
     for (int i = blankGoal + 1; i < board.size(); i++) {
-        if (board[i] == 0) continue;
+        if (board[i] == 0) {
+            continue;
+        }
         distance = distance + abs(board[i] / numberOfColumns - i / numberOfColumns) +
         abs(board[i] % numberOfColumns - i % numberOfColumns);
     }
@@ -87,6 +82,38 @@ bool isSolvable(std::vector<int>& board, int numberOfColumns,int blankPosition) 
     }
 }
 
+int searchSolution(BoardState currentState, int threshold, std::stack<std::string>& solutionPath) {
+    if (currentState.isSolution()) {
+        BoardState* currentStatePointer = &currentState;
+        while (currentStatePointer->parent != nullptr) {
+            solutionPath.push(currentStatePointer->lastMove);
+            currentStatePointer = currentStatePointer->parent;
+        }
+        return FOUND;
+    }
+    if (currentState.manhattanDist + currentState.currSteps > threshold) {
+        return currentState.manhattanDist + currentState.currSteps;
+    }
+
+    int minHigherThanThreshold = INT_MAX;
+
+
+    return minHigherThanThreshold;
+
+}
+
+void solve(BoardState startingBoardState) {
+    int threshold = startingBoardState.manhattanDist;
+    std::stack<std::string> solutionPath;
+    
+    while (true) {
+        int newThreshold = searchSolution(startingBoardState, threshold, solutionPath);
+        if (newThreshold == FOUND) {
+            break;
+        }
+        threshold = newThreshold;
+    }
+}
 
 int main()
 {
@@ -106,11 +133,8 @@ int main()
     }
 
     int manhattanDistanceStart = calculateManhattanDist(startingBoard, numOfColumns, blankGoalPosition);
-    std::cout << manhattanDistanceStart;
 
     BoardState startingBoardState(startingBoard, nullptr, numOfColumns, "", 0, blankStartPosition, blankGoalPosition, manhattanDistanceStart);
     
-
-
     return 0;
 }
