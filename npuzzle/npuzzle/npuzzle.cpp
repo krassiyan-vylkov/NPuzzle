@@ -30,36 +30,43 @@ public:
     }
 };
 
-int calculateManhattanDist(std::vector<int>& board, int numberOfColumns, int blankGoal) {
+/*
+Since a single dimension vector is used:
+With -value- % boardSideSize we get column index (starting from 0)
+With -value- / boardSideSize we get row index (starting from 0)
+Special treatment of blankGoal position based on the value of the tile in it
+*/
+
+int calculateManhattanDist(std::vector<int>& board, int boardSideSize, int blankGoal) {
     int distance = 0;
     for (int i = 0; i < blankGoal; i++){
         if (board[i] == 0) {
             continue;
         }
-        distance = distance + abs((board[i] - 1) / numberOfColumns - i / numberOfColumns) +
-        abs((board[i] - 1) % numberOfColumns - i %numberOfColumns);
+        distance = distance + abs((board[i] - 1) / boardSideSize - i / boardSideSize) +
+        abs((board[i] - 1) % boardSideSize - i %boardSideSize);
     }
     if (board[blankGoal] != 0) {
         if (board[blankGoal] <= blankGoal) {
-            distance = distance + abs((board[blankGoal] - 1) / numberOfColumns - blankGoal / numberOfColumns) +
-            abs((board[blankGoal] - 1) % numberOfColumns - blankGoal % numberOfColumns);
+            distance = distance + abs((board[blankGoal] - 1) / boardSideSize - blankGoal / boardSideSize) +
+            abs((board[blankGoal] - 1) % boardSideSize - blankGoal % boardSideSize);
         }
         else {
-            distance = distance + abs(board[blankGoal] / numberOfColumns - blankGoal / numberOfColumns) +
-            abs(board[blankGoal] % numberOfColumns - blankGoal % numberOfColumns);
+            distance = distance + abs(board[blankGoal] / boardSideSize - blankGoal / boardSideSize) +
+            abs(board[blankGoal] % boardSideSize - blankGoal % boardSideSize);
         }
     }
     for (int i = blankGoal + 1; i < board.size(); i++) {
         if (board[i] == 0) {
             continue;
         }
-        distance = distance + abs(board[i] / numberOfColumns - i / numberOfColumns) +
-        abs(board[i] % numberOfColumns - i % numberOfColumns);
+        distance = distance + abs(board[i] / boardSideSize - i / boardSideSize) +
+        abs(board[i] % boardSideSize - i % boardSideSize);
     }
     return distance;
 }
 
-bool isSolvable(std::vector<int>& board, int numberOfColumns,int blankPosition) {
+bool isSolvable(std::vector<int>& board, int boardSideSize,int blankPosition, int blankGoal) {
 
     int numberOfInversion = 0;
     
@@ -71,15 +78,23 @@ bool isSolvable(std::vector<int>& board, int numberOfColumns,int blankPosition) 
         }
     }
 
-    if (numberOfColumns % 2 == 0) {
-        int blankRow = blankPosition / numberOfColumns + 1;
-        return ((blankRow + numberOfInversion) % 2 == 0);
-
+    
+    if (boardSideSize % 2 == 0) {
+        //different solvability checks if goal on even index row (top left) and odd index row (bottom right)
+        if ( (blankGoal / boardSideSize) % 2 == 0 ) {
+            int blankRow = blankPosition / boardSideSize + 1;
+            return ((blankRow + numberOfInversion) % 2 == 1);
+        }
+        else {
+            int blankRow = blankPosition / boardSideSize + 1;
+            return ((blankRow + numberOfInversion) % 2 == 0);
+        }
     }
     else {
         return (numberOfInversion % 2 == 0);
     }
 }
+
 
 int searchSolution(BoardState& currentState, int threshold, std::deque<std::string>& solutionPath) {
     if (currentState.isSolution()) {
@@ -92,6 +107,7 @@ int searchSolution(BoardState& currentState, int threshold, std::deque<std::stri
 
     int minHigherThanThreshold = INT_MAX;
 
+    //successor next move 'right'
     if (currentState.lastMove != "left" && currentState.blankCoordinates % currentState.boardSideSize != 0) {
         std::vector<int> successorBoard = currentState.board;
         const int successorBlankCoordinates = currentState.blankCoordinates - 1;
@@ -123,6 +139,8 @@ int searchSolution(BoardState& currentState, int threshold, std::deque<std::stri
         solutionPath.pop_back();
     }
 
+
+    //successor next move 'left'
     if (currentState.lastMove != "right" && currentState.blankCoordinates % currentState.boardSideSize + 1 != currentState.boardSideSize) {
         std::vector<int> successorBoard = currentState.board;
         const int successorBlankCoordinates = currentState.blankCoordinates + 1;
@@ -154,6 +172,8 @@ int searchSolution(BoardState& currentState, int threshold, std::deque<std::stri
         solutionPath.pop_back();
     }
 
+
+    //successor next move 'down'
     if (currentState.lastMove != "up" && currentState.blankCoordinates / currentState.boardSideSize != 0) {
         std::vector<int> successorBoard = currentState.board;
         const int successorBlankCoordinates = currentState.blankCoordinates - currentState.boardSideSize;
@@ -185,6 +205,8 @@ int searchSolution(BoardState& currentState, int threshold, std::deque<std::stri
         solutionPath.pop_back();
     }
 
+
+    //successor next move 'up'
     if (currentState.lastMove != "down" && (currentState.blankCoordinates / currentState.boardSideSize) + 1 != currentState.boardSideSize) {
         std::vector<int> successorBoard = currentState.board;
         const int successorBlankCoordinates = currentState.blankCoordinates + currentState.boardSideSize;
@@ -216,15 +238,17 @@ int searchSolution(BoardState& currentState, int threshold, std::deque<std::stri
         solutionPath.pop_back();
     }
 
+
     return minHigherThanThreshold;
 
 }
 
-void solve(BoardState& startingBoardState, std::deque<std::string>& reversedMovesToSolution) {
+void solve(BoardState& startingBoardState, std::deque<std::string>& solutionPath) {
     int threshold = startingBoardState.manhattanDist;
     
+    //since we call it after solvability check, this should break out of loop
     while (true) {
-        int newThreshold = searchSolution(startingBoardState, threshold, reversedMovesToSolution);
+        int newThreshold = searchSolution(startingBoardState, threshold, solutionPath);
         if (newThreshold == FOUND) {
             break;
         }
@@ -236,12 +260,15 @@ int main()
 {
     int size, blankGoalPosition;
     std::vector<int> startingBoard;
+
     std::cin >> size;
     std::cin >> blankGoalPosition;
-    if (blankGoalPosition == -1) blankGoalPosition = size;
-    int blankStartPosition;
-    int numOfColumns = sqrt(size + 1);
 
+    if (blankGoalPosition == -1) blankGoalPosition = size;
+    int numOfColumns = sqrt(size + 1);
+    int blankStartPosition;
+
+    //with correct input we should always have a value for blankStartPosition
     for (int i = 0; i <= size; i++) {
         int num;
         std::cin >> num;
@@ -250,17 +277,18 @@ int main()
     }
 
     int manhattanDistanceStart = calculateManhattanDist(startingBoard, numOfColumns, blankGoalPosition);
+    int startingSteps = 0;
     std::string startingMove = "";
+    BoardState startingBoardState(startingBoard, numOfColumns, startingMove, startingSteps, blankStartPosition, blankGoalPosition, manhattanDistanceStart);
 
-    BoardState startingBoardState(startingBoard, numOfColumns, startingMove, 0, blankStartPosition, blankGoalPosition, manhattanDistanceStart);
-    std::deque<std::string> reversedMovesToSolution;
+    std::deque<std::string> solutionPath;
 
-    if (isSolvable(startingBoard, numOfColumns, blankStartPosition)) {
-        solve(startingBoardState, reversedMovesToSolution);
+    if (isSolvable(startingBoard, numOfColumns, blankStartPosition, blankGoalPosition)) {
+        solve(startingBoardState, solutionPath);
 
-        while (!reversedMovesToSolution.empty()) {
-            std::cout << reversedMovesToSolution.front() << std::endl;
-            reversedMovesToSolution.pop_front();
+        while (!solutionPath.empty()) {
+            std::cout << solutionPath.front() << std::endl;
+            solutionPath.pop_front();
         }
     }
     else {
